@@ -29,6 +29,7 @@
     <None Remove="Model\" />
     <None Remove="QueueTriggers\" />
     <None Remove="Azure.Data.Tables" />
+    <None Remove="Functions\ImageUpload.css" />
   </ItemGroup>
   <ItemGroup>
     <None Update="host.json">

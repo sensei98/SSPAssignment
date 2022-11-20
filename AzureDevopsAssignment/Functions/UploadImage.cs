@@ -1,34 +1,32 @@
-﻿using Azure.Storage.Blobs;
-using Microsoft.AspNetCore.Http;
+﻿using System;
+using System.IO;
+using System.Threading.Tasks;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Azure.WebJobs;
 using Microsoft.Azure.WebJobs.Extensions.Http;
+using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.Logging;
-using System;
-using System.IO;
-using System.Threading.Tasks;
-using System.Linq;
-using System.Security.Cryptography;
+using Newtonsoft.Json;
+using Azure.Storage.Blobs;
 using Azure.Storage.Blobs.Models;
-using AzureDevopsAssignment.Service;
-
 using Azure.Storage.Queues;
-using System.Text;
-using System.Text.RegularExpressions;
-using Microsoft.WindowsAzure.Storage;
-using Microsoft.WindowsAzure.Storage.Blob;
+using AzureDevopsAssignment.Service;
+using System.Security.Cryptography;
+using System.Linq;
+using Azure;
+using Azure.Data.Tables;
+using AzureDevopsAssignment.Model;
 
-namespace AzureDevopsAssignment
+namespace AzureDevopsAssignment.Functions
 {
-    
-    public static class ImageUpload
+    public class UploadImage
     {
         public static readonly MD5 Algo = MD5.Create();
-        
 
-        [FunctionName("ImageUpload")]
+        [FunctionName("UploadImage")]
         public static async Task<IActionResult> Run(
-            [HttpTrigger(AuthorizationLevel.Anonymous, "post", Route = null)] HttpRequest req,ILogger log)
+            [HttpTrigger(AuthorizationLevel.Anonymous, "get", "post", Route = null)] HttpRequest req,
+            ILogger log)
         {
             string Connection = Environment.GetEnvironmentVariable("AzureWebJobsStorage");
             string containerName = Environment.GetEnvironmentVariable("ContainerName");
@@ -38,6 +36,9 @@ namespace AzureDevopsAssignment
 
             Stream myBlob = new MemoryStream();
             var file = req.Form.Files["image"];
+
+            if (file.Length > 0x800000) // 8 MB
+                return new BadRequestObjectResult("An image can be at least 8mb");
 
 
             myBlob = file.OpenReadStream();
@@ -51,7 +52,8 @@ namespace AzureDevopsAssignment
 
             string md5 = GenerateHash(myBlob);
 
-            if(await blob.ExistsAsync()) {
+            if (await blob.ExistsAsync())
+            {
                 return new OkObjectResult($"File exists, Result={md5}");
             }
             else
@@ -59,10 +61,9 @@ namespace AzureDevopsAssignment
                 myBlob.Position = 0;
 
                 await blob.UploadAsync(myBlob, header);
-                //await QueueStorage.AddToQueue(md5".png", queueClient); //get image type and pass it here
                 await QueueStorage.AddToQueue(file.FileName, queueClient);
             }
-           
+
 
             return new OkObjectResult($"image uploaded successfully: {md5}");
         }
@@ -71,16 +72,5 @@ namespace AzureDevopsAssignment
             var hash = Algo.ComputeHash(stream);
             return string.Concat(hash.Select(i => i.ToString("x2")));
         }
-
-        //public static async Task CreateQueueMessage(string message,QueueClient queueClient)
-        //{
-        //    string base64Message = Convert.ToBase64String(Encoding.UTF8.GetBytes(message));
-        //    await queueClient.SendMessageAsync(base64Message);
-        //}
-
-
     }
-   
-
 }
-

@@ -16,10 +16,6 @@ namespace AzureDevopsAssignment.Service
             this.queueName = queueName;
             this.queueClient = new(Connection, queueName);
         }
-        //public async Task AddToQueue(string message)
-        //{
-        //    await queueClient.SendMessageAsync(message);
-        //}
 
         public static async Task AddToQueue(string message, QueueClient queueClient)
         {
